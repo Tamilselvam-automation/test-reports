@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cucumber Report Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #reportList { list-style-type: none; padding: 0; }
+        #reportList li { margin: 5px 0; }
+        #reportChart { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Cucumber Report Dashboard</h1>
+    <ul id="reportList"></ul>
+    <canvas id="reportChart" width="400" height="200"></canvas>
+    <script>
+        async function fetchReportList() {
+            const response = await fetch('https://api.github.com/repos/Tamilselvam-automation/test-reports/contents/reports');
+            const files = await response.json();
+            return files.filter(file => file.name.endsWith('.json')).map(file => file.download_url);
+        }
+
+        async function fetchReport(url) {
+            const response = await fetch(url);
+            return await response.json();
+        }
+
+        function processReportData(data) {
+            const labels = data.map(report => report.date); // Assuming each report has a date field
+            const pass = data.map(report => report.passCount || 0); // Customize based on your report structure
+            const fail = data.map(report => report.failCount || 0); // Customize based on your report structure
+
+            return {
+                labels,
+                pass,
+                fail
+            };
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('reportChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: '# of Pass',
+                        data: data.pass,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: '# of Fail',
+                        data: data.fail,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function init() {
+            const reportList = await fetchReportList();
+            const reportListElement = document.getElementById('reportList');
+            reportList.forEach(url => {
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = '#';
+                link.textContent = url.split('/').pop();
+                link.onclick = async () => {
+                    const data = await fetchReport(url);
+                    const reportData = processReportData(data);
+                    renderChart(reportData);
+                };
+                listItem.appendChild(link);
+                reportListElement.appendChild(listItem);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
